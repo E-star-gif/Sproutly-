@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sproutly 🌿</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+  body {
+    margin: 0;
+    font-family: Inter, sans-serif;
+    background: #f4fff6;
+    color: #1e1e1e;
+  }
+
+  header {
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+    color: white;
+    padding: 40px 20px;
+    text-align: center;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 36px;
+  }
+
+  header p {
+    margin-top: 10px;
+    font-size: 16px;
+    opacity: 0.95;
+  }
+
+  .container {
+    max-width: 850px;
+    margin: auto;
+    padding: 20px;
+  }
+
+  .card {
+    background: white;
+    padding: 18px;
+    margin: 12px 0;
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+
+  h2 {
+    margin-top: 0;
+  }
+
+  input, select {
+    width: 100%;
+    padding: 12px;
+    margin: 6px 0;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    font-size: 14px;
+  }
+
+  button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: #2ecc71;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: 0.2s;
+  }
+
+  button:hover {
+    background: #27ae60;
+  }
+
+  .plant {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .small {
+    font-size: 12px;
+    color: #666;
+  }
+
+  .danger {
+    color: #e74c3c;
+    font-weight: 600;
+  }
+
+  .ok {
+    color: #2ecc71;
+    font-weight: 600;
+  }
+
+  .brand-tag {
+    font-size: 14px;
+    opacity: 0.9;
+  }
+
+  .footer {
+    text-align: center;
+    font-size: 12px;
+    color: #888;
+    margin: 30px 0;
+  }
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>🌿 Sproutly</h1>
+  <p>Never lose a plant again</p>
+  <p class="brand-tag">Your calm plant care assistant</p>
+
+  <button onclick="requestNotif()">🔔 Enable Notifications</button>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h2>Add a Plant 🌱</h2>
+
+    <input id="name" placeholder="Plant name (e.g. Monstera)" />
+
+    <select id="frequency">
+      <option value="3">Water every 3 days</option>
+      <option value="7">Water every 7 days</option>
+      <option value="14">Water every 14 days</option>
+      <option value="21">Water every 21 days</option>
+    </select>
+
+    <button onclick="addPlant()">Add Plant</button>
+  </div>
+
+  <div class="card">
+    <h2>Your Plants 🌿</h2>
+    <div id="plants"></div>
+  </div>
+
+</div>
+
+<div class="footer">
+  Sproutly — built to help your plants thrive 🌱
+</div>
+
+<script>
+let plants = JSON.parse(localStorage.getItem("plants") || "[]");
+
+function save() {
+  localStorage.setItem("plants", JSON.stringify(plants));
+}
+
+/* ---------------- NOTIFICATIONS ---------------- */
+
+function requestNotif() {
+  if (!("Notification" in window)) return;
+
+  Notification.requestPermission().then(p => {
+    alert(p === "granted"
+      ? "Sproutly notifications enabled 🌿"
+      : "Notifications blocked");
+  });
+}
+
+function notify(title, body) {
+  if (Notification.permission === "granted") {
+    new Notification(title, { body });
+  }
+}
+
+/* periodic check */
+setInterval(checkPlants, 60000);
+
+function checkPlants() {
+  plants.forEach(p => {
+    const days = daysSince(p.lastWatered);
+    if (days >= p.frequency) {
+      notify("🌿 Sproutly", `${p.name} needs water`);
+    }
+  });
+}
+
+/* ---------------- CORE ---------------- */
+
+function addPlant() {
+  const name = document.getElementById("name").value;
+  const freq = document.getElementById("frequency").value;
+
+  if (!name) return;
+
+  plants.push({
+    id: Date.now(),
+    name,
+    frequency: parseInt(freq),
+    lastWatered: Date.now()
+  });
+
+  save();
+  render();
+  document.getElementById("name").value = "";
+}
+
+function waterPlant(id) {
+  plants = plants.map(p => {
+    if (p.id === id) p.lastWatered = Date.now();
+    return p;
+  });
+  save();
+  render();
+}
+
+function deletePlant(id) {
+  plants = plants.filter(p => p.id !== id);
+  save();
+  render();
+}
+
+function daysSince(time) {
+  return Math.floor((Date.now() - time) / (1000*60*60*24));
+}
+
+/* ---------------- UI ---------------- */
+
+function render() {
+  const el = document.getElementById("plants");
+  el.innerHTML = "";
+
+  if (plants.length === 0) {
+    el.innerHTML = "<p>No plants yet 🌱 Add your first one above.</p>";
+    return;
+  }
+
+  plants.forEach(p => {
+    const days = daysSince(p.lastWatered);
+    const due = days >= p.frequency;
+
+    const div = document.createElement("div");
+    div.className = "card";
+
+    div.innerHTML = `
+      <div class="plant">
+        <div>
+          <strong>${p.name}</strong><br/>
+          <span class="small">Water every ${p.frequency} days</span><br/>
+          <span class="${due ? "danger" : "ok"}">
+            ${due ? "⚠ Needs water" : "✔ Healthy"}
+          </span>
+        </div>
+      </div>
+
+      <button onclick="waterPlant(${p.id})">💧 Mark Watered</button>
+      <button onclick="deletePlant(${p.id})" style="background:#e74c3c;">Delete</button>
+    `;
+
+    el.appendChild(div);
+  });
+}
+
+render();
+</script>
+
+</body>
+</html>
